@@ -1,0 +1,15 @@
+{% extends 'pages/base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block header_title %}{{ subtitle }}{% endblock %}
+
+{% block content %}
+<div class="alert alert-success" role="alert">
+  Product created
+</div>
+<div class="card">
+  <div class="card-body">
+    <p class="mb-1"><strong>Name:</strong> {{ name }}</p>
+    <p class="mb-0"><strong>Price:</strong> {{ price }}</p>
+  </div>
+</div>
+{% endblock %}

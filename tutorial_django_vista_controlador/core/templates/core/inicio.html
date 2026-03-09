@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ titulo }}</title>
+    <style>
+        body {
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background: #f4f6f8;
+            margin: 0;
+            padding: 2rem;
+        }
+        .card {
+            max-width: 760px;
+            margin: 2rem auto;
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+        }
+        h1 {
+            margin-top: 0;
+            color: #1f2937;
+        }
+        p {
+            color: #4b5563;
+            line-height: 1.6;
+        }
+        code {
+            background: #eef2ff;
+            padding: 0.2rem 0.4rem;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>{{ titulo }}</h1>
+        <p>{{ mensaje }}</p>
+        <p>Servidor de desarrollo: <code>py manage.py runserver</code></p>
+        <p>Panel de admin: <code>/admin</code></p>
+    </div>
+</body>
+</html>

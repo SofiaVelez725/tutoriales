@@ -1,0 +1,315 @@
+Tutorial 04 para hacer en clase - Recuerda subir el link del repo a Teams.
+
+Antes de iniciar:
+- Terminar los talleres no calificables anteriores.
+- Este taller muestra ejemplos de creacion de servicios REST en Django.
+
+SECCION 1: Setup
+
+1) Crea un directorio llamado `todoapp`.
+2) Dentro de `todoapp`, crea un proyecto Django llamado `backend`.
+3) Crea una app en `backend` llamada `todo`.
+
+4) Ve a `/backend/settings.py` y agrega en `INSTALLED_APPS`:
+
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    # Custom apps start here
+    'todo.apps.TodoConfig',
+]
+
+5) Ve a `todo/models.py` y reemplaza con:
+
+from django.db import models
+from django.contrib.auth.models import User
+
+class ToDo(models.Model):
+    title = models.CharField(max_length=100)
+    memo = models.TextField(blank=True)
+    created = models.DateTimeField(auto_now_add=True)
+    completed = models.BooleanField(default=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.title
+
+6) Ejecuta en terminal:
+- python manage.py makemigrations
+- python manage.py migrate
+
+7) Crea superusuario:
+- python manage.py createsuperuser
+
+8) Levanta servidor:
+- python manage.py runserver
+
+9) Ve a `todo/admin.py` y reemplaza con:
+
+from django.contrib import admin
+from .models import ToDo
+
+admin.site.register(ToDo)
+
+10) Entra a `http://localhost:8000/admin/` y verifica que puedes crear ToDos.
+
+SECCION 2: Sistema API con Django REST Framework (DRF)
+
+1) Instala DRF:
+- pip install djangorestframework
+
+2) Agrega en `/backend/settings.py`:
+
+INSTALLED_APPS = [
+    ...
+    'todo.apps.TodoConfig',
+    'rest_framework',
+]
+
+3) Crea app API:
+- python manage.py startapp api
+
+4) Agrega la app `api` a `INSTALLED_APPS`:
+
+INSTALLED_APPS = [
+    ...
+    'todo.apps.TodoConfig',
+    'api.apps.ApiConfig',
+    'rest_framework',
+]
+
+SECCION 3: Serializers
+
+Crea `api/serializers.py`:
+
+from rest_framework import serializers
+from todo.models import ToDo
+
+class ToDoSerializer(serializers.ModelSerializer):
+    created = serializers.ReadOnlyField()
+    completed = serializers.ReadOnlyField()
+
+    class Meta:
+        model = ToDo
+        fields = ['id', 'title', 'memo', 'created', 'completed']
+
+SECCION 4: API Controller (listar)
+
+`api/views.py`:
+
+from rest_framework import generics
+from .serializers import ToDoSerializer
+from todo.models import ToDo
+
+class ToDoList(generics.ListAPIView):
+    serializer_class = ToDoSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        return ToDo.objects.filter(user=user).order_by('-created')
+
+SECCION 5: Rutas API
+
+1) En `backend/urls.py`:
+
+from django.contrib import admin
+from django.urls import path, include
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('api/', include('api.urls')),
+]
+
+2) Crea `api/urls.py`:
+
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('todos/', views.ToDoList.as_view(), name='list'),
+]
+
+3) Ejecuta y prueba:
+- http://127.0.0.1:8000/api/todos
+
+SECCION 6: Mejorar controlador API (listar + crear)
+
+En `api/views.py`:
+
+from rest_framework import generics
+from .serializers import ToDoSerializer
+from todo.models import ToDo
+
+class ToDoListCreate(generics.ListCreateAPIView):
+    serializer_class = ToDoSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        return ToDo.objects.filter(user=user).order_by('-created')
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+En `api/urls.py`:
+
+urlpatterns = [
+    path('todos/', views.ToDoListCreate.as_view(), name='list'),
+]
+
+SECCION 7: Permisos (requiere autenticacion)
+
+En `api/views.py`:
+
+from rest_framework import generics, permissions
+
+class ToDoListCreate(generics.ListCreateAPIView):
+    ...
+    permission_classes = [permissions.IsAuthenticated]
+
+SECCION 8: Otras operaciones CRUD (retrieve/update/destroy)
+
+En `api/urls.py`:
+
+urlpatterns = [
+    path('todos/', views.ToDoListCreate.as_view()),
+    path('todos/<int:pk>', views.ToDoRetrieveUpdateDestroy.as_view()),
+]
+
+En `api/views.py`:
+
+class ToDoRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = ToDoSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        return ToDo.objects.filter(user=user)
+
+Prueba:
+- http://localhost:8000/api/todos/1
+
+SECCION 9: Operacion no-CRUD (toggle complete)
+
+En `api/urls.py`:
+
+urlpatterns = [
+    path('todos/', views.ToDoListCreate.as_view()),
+    path('todos/<int:pk>', views.ToDoRetrieveUpdateDestroy.as_view()),
+    path('todos/<int:pk>/complete', views.ToDoToggleComplete.as_view()),
+]
+
+Serializador para toggle en `api/serializers.py` (segun tutorial):
+- mantener campos necesarios para actualizar `completed`.
+
+En `api/views.py`:
+
+from .serializers import ToDoSerializer, ToDoToggleCompleteSerializer
+
+class ToDoToggleComplete(generics.UpdateAPIView):
+    serializer_class = ToDoToggleCompleteSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        return ToDo.objects.filter(user=user)
+
+    def perform_update(self, serializer):
+        serializer.instance.completed = not (serializer.instance.completed)
+        serializer.save()
+
+Prueba:
+- localhost:8000/api/todos/2/complete (PUT)
+- localhost:8000/api/todos
+
+SECCION 10: Signup + Login con token
+
+1) En `backend/settings.py`, agrega:
+
+INSTALLED_APPS = [
+    ...
+    'todo.apps.TodoConfig',
+    'api.apps.ApiConfig',
+    'rest_framework',
+    'rest_framework.authtoken',
+]
+
+2) Ejecuta migraciones:
+- python manage.py migrate
+
+3) En `backend/settings.py` (al final):
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+    ]
+}
+
+4) En `api/urls.py`:
+
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('todos/', views.ToDoListCreate.as_view(), name='todo_list'),
+    path('todos/<int:pk>', views.ToDoRetrieveUpdateDestroy.as_view(), name='todo_RUD'),
+    path('todos/<int:pk>/complete', views.ToDoToggleComplete.as_view()),
+    path('signup/', views.signup, name='signup'),
+    path('login/', views.login, name='login'),
+]
+
+5) En `api/views.py`, agregar imports y funciones:
+
+from django.db import IntegrityError
+from django.contrib.auth.models import User
+from rest_framework.parsers import JSONParser
+from rest_framework.authtoken.models import Token
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth import authenticate
+
+@csrf_exempt
+def signup(request):
+    if request.method == 'POST':
+        try:
+            data = JSONParser().parse(request)
+            user = User.objects.create_user(
+                username=data['username'],
+                password=data['password']
+            )
+            user.save()
+            token = Token.objects.create(user=user)
+            return JsonResponse({'token': str(token)}, status=201)
+        except IntegrityError:
+            return JsonResponse({'error': 'username taken. choose another username'}, status=400)
+
+@csrf_exempt
+def login(request):
+    if request.method == 'POST':
+        data = JSONParser().parse(request)
+        user = authenticate(
+            request,
+            username=data['username'],
+            password=data['password']
+        )
+        if user is None:
+            return JsonResponse({'error': 'unable to login. check username and password'}, status=400)
+        try:
+            token = Token.objects.get(user=user)
+        except Exception:
+            token = Token.objects.create(user=user)
+        return JsonResponse({'token': str(token)}, status=201)
+
+SECCION 11: Pruebas sugeridas por el tutorial
+
+- Probar `signup` y `login` con Insomnia.
+- Usar token para consumir endpoint protegido, por ejemplo:
+
+curl http://127.0.0.1:8000/api/todos/ -H "Authorization: Token <TU_TOKEN>"
+
+Reto final del tutorial:
+- Tomar la app `helloworld` y crearle endpoint API (autenticacion al final).
+- No necesitas borrar controladores MVT para hacerlo.

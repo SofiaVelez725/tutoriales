@@ -1,0 +1,207 @@
+Tutorial 03-A to do in class – Remember to upload the repo link to Teams
+
+A. A cart system
+
+View/Controller
+
+Go to pages/views.py and add the following content:
+
+Add Entire Code
+
+class CartView(View):
+
+    template_name = 'cart/index.html'
+
+    
+
+    def get(self, request):
+
+        # Simulated database for products
+
+        products = {}
+
+        products[121] = {'name': 'Tv samsung', 'price': '1000'}
+
+        products[11] = {'name': 'Iphone', 'price': '2000'}
+
+        # Get cart products from session
+
+        cart_products = {}
+
+        cart_product_data = request.session.get('cart_product_data', {})
+
+        for key, product in products.items():
+
+            if str(key) in cart_product_data.keys():
+
+                cart_products[key] = product
+
+        # Prepare data for the view
+
+        view_data = {
+
+            'title': 'Cart - Online Store',
+
+            'subtitle': 'Shopping Cart',
+
+            'products': products,
+
+            'cart_products': cart_products
+
+        }
+
+        return render(request, self.template_name, view_data)
+
+    def post(self, request, product_id):
+
+        # Get cart products from session and add the new product
+
+        cart_product_data = request.session.get('cart_product_data', {})
+
+        cart_product_data[product_id] = product_id
+
+        request.session['cart_product_data'] = cart_product_data
+
+        return redirect('cart_index')
+
+class CartRemoveAllView(View):
+
+    def post(self, request):
+
+        # Remove all products from cart in session
+
+        if 'cart_product_data' in request.session:
+
+            del request.session['cart_product_data']
+
+        return redirect('cart_index')}
+
+Template/views
+
+Go to pages/templates/ and create a folder cart
+
+Go to pages/templates/cart and create a file index.html with the following content:
+
+Add Entire Code
+
+{% extends 'pages/base.html' %}
+
+{% block title %} {{title}} {% endblock %}
+
+{% block header_title %} {{subtitle}} {% endblock %}
+
+{% block content %}
+
+<div class="container">
+
+  <div class="row justify-content-center">
+
+    <div class="col-md-12">
+
+    <h1>Available products</h1>
+
+    <ul>
+
+      {% for key, product in products.items %}
+
+        <li>
+
+          Id: {{ key }} - 
+
+          Name: {{ product.name }} -
+
+          Price: {{ product.price }} -
+
+          <form method="post" action="{% url 'cart_add' key %}">
+
+            {% csrf_token %}
+
+            <button type="submit">Add product to cart</button>
+
+          </form>        
+
+      </li>
+
+      {% endfor %}
+
+    </ul>
+
+    </div>
+
+  </div>
+
+  <div class="row justify-content-center">
+
+    <div class="col-md-12">
+
+    <h1>Products in cart</h1>
+
+      <ul>
+
+        {% for key, product in cart_products.items %}
+
+        
+
+          <li>
+
+            Id: {{ key }} - 
+
+            Name: {{ product.name }} -
+
+            Price: {{ product.price }}
+
+          </li>
+
+        {% endfor %}
+
+      </ul>
+
+      <form method="post" action="{% url 'cart_removeAll' %}">
+
+        {% csrf_token %}
+
+        <button type="submit">Remove all products from cart</button>
+
+      </form>
+
+    </div>
+
+  </div>
+
+</div>
+
+{% endblock %}
+
+Routes
+
+Go to pages/urls.py and add these new routes by adding the next lines at the end of the file (check bold).
+
+Add Bold Code
+
+…
+
+urlpatterns = [
+
+    path('', HomePageView.as_view(), name='home'),
+
+    path('about/', AboutPageView.as_view(), name='about'),
+
+    path('products/', ProductIndexView.as_view(), name='index'),
+
+    path('products/create', ProductCreateView.as_view(), name='form'),
+
+    path('products/product-created', ProductCreateSuccessView.as_view(), name='product-created'),
+
+    path('cart/', CartView.as_view(), name='cart_index'),
+
+    path('cart/add/<str:product_id>', CartView.as_view(), name='cart_add'),
+
+    path('cart/removeAll', CartRemoveAllView.as_view(), name='cart_removeAll'),
+
+]
+
+Run the application
+
+Go to http://127.0.0.1:8000/cart add some products to the cart and remove them.
+
+Note: complete the Django Login tutorial in Chapter 10 of the Django 4 for The Impatient book. It will be useful to understand some concepts in the next class. IF you do not have access to the book, please notify the professor.
